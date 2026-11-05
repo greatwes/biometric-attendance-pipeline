@@ -1,11 +1,12 @@
 # Staff Attendance — ZKTeco Horus H1 → n8n → Snowflake → Dataiku
 
-An unattended IoT-to-warehouse data pipeline: a biometric fingerprint terminal
-pushes punches over the ADMS protocol to a webhook, which lands them in a cloud
-warehouse through idempotent writes, feeding a read-only dashboard. No laptop
-or on-prem server is in the path at any point — everything between the device
-and the warehouse has to keep working through reboots, retries and a 3am punch
-with nobody watching. This README is written as the setup/runbook it started
+An unattended IoT-to-warehouse data pipeline built for an organization with
+500+ staff: a biometric fingerprint terminal pushes punches over the ADMS
+protocol to a webhook, which lands them in a cloud warehouse through
+idempotent writes, feeding a read-only dashboard and a native Android app for
+on-device enrollment and admin. No laptop or on-prem server is in the path at
+any point — everything between the device and the warehouse has to keep
+working through reboots, retries and a 3am punch with nobody watching. This README is written as the setup/runbook it started
 as, including the open items that were still outstanding when the project was
 paused; the "Notes on the design" and "Open blockers" sections below are the
 most interesting part for anyone evaluating the engineering.
