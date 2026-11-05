@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The clock-in screen, in two pages that swap by visibility rather than two
+    activities.
+
+    One activity on purpose: the fingerprint engine is process-wide and owned by
+    whichever screen is on top, and handing it between activities on every punch
+    is how you end up with "sensor unavailable" halfway through a queue of
+    people. Swapping visibility keeps one owner and one capture loop.
+
+    Page 1 asks what you are doing. Page 2 asks for your finger and then shows
+    the result. Separating them is what stops somebody presenting a finger while
+    the previous person's message is still on screen and having it recorded
+    against whatever mode was still armed.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:padding="20dp">
+
+    <!-- ============================ PAGE 1: options ======================= -->
+    <LinearLayout
+        android:id="@+id/optionsPage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!--
+            One row, one baseline: wordmark left, then Admin, then the leaf hard
+            right. Stacking Admin underneath the leaf read as a caption on the
+            logo and cost a second row of height for a button pressed a few
+            times a day.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/header"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/adminButton"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:minWidth="0dp"
+                android:text="@string/admin"
+                android:textColor="@color/text_muted" />
+
+            <!-- The only decorative element on the screen, and the last thing
+                 in the row so nothing sits under it. -->
+            <ImageView
+                android:id="@+id/brandMark"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/brand_description"
+                android:src="@drawable/leaf_mark" />
+        </LinearLayout>
+
+        <!--
+            Which site this terminal is recording for. Deliberately large: the
+            same APK runs at several locations, a device set to the wrong site
+            silently mis-attributes every punch it takes, and nothing else on
+            screen would ever reveal it. Worth the space.
+        -->
+        <TextView
+            android:id="@+id/locationLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            tools:text="Location: Lapai" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:text="@string/choose_action"
+            android:textColor="@color/text_muted"
+            android:textSize="18sp" />
+
+        <!--
+            Four punch types, one tap each, filling everything between the
+            header and the queue line. The buttons carry layout_weight instead
+            of a fixed minHeight so they absorb the empty middle of the screen
+            rather than huddling at the bottom above dead space.
+
+            The 3:2 weight split is the hierarchy: Clock In/Out are the twice-
+            daily actions and get the bigger targets, Stepping Out/Back on Seat
+            are occasional. Bigger target, fewer mis-taps, and the common case
+            is obvious from across a room - which matters, because a mis-tap
+            here writes the wrong direction into somebody's attendance and
+            nothing on screen afterwards looks wrong.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="3"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/clockInButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/btn_clock_in"
+                android:text="@string/clock_in"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/clockOutButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/btn_clock_out"
+                android:text="@string/clock_out"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="2"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/checkOutButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/btn_check_out"
+                android:text="@string/check_out"
+                android:textSize="20sp" />
+
+            <Button
+                android:id="@+id/checkInButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/btn_check_in"
+                android:text="@string/check_in"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/queueStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:text="@string/queue_clear"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- ================= PAGE 2: place your finger, then result ========== -->
+    <LinearLayout
+        android:id="@+id/capturePage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Which action is armed, kept on screen for the whole capture so
+             nobody has to remember what they pressed a moment ago. -->
+        <TextView
+            android:id="@+id/captureMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:text="Clock In" />
+
+        <LinearLayout
+            android:id="@+id/statusCard"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_status_idle"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!--
+                The greeting and the name. lineSpacingExtra because these
+                strings are deliberately multi-line ("Welcome\nAsha") and the
+                default leading makes two big lines collide.
+            -->
+            <TextView
+                android:id="@+id/statusTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:lineSpacingExtra="6sp"
+                android:text="@string/place_finger"
+                android:textColor="@color/text_primary"
+                android:textSize="42sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/statusDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="center"
+                android:lineSpacingExtra="4sp"
+                android:text="@string/place_finger_hint"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <!--
+                The time, on its own line and the loudest thing on the card.
+                It is the only fact anybody comes back to check - "what time did
+                I clock in?" - and it has to be readable by someone already
+                turning away.
+
+                Its own view rather than part of the sentence: a bold run inside
+                a paragraph cannot be given its own size, and this is hidden
+                outright for the messages that have no time to report.
+            -->
+            <TextView
+                android:id="@+id/statusTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:textColor="@color/text_primary"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="8:31:07 AM" />
+        </LinearLayout>
+
+        <!-- An explicit way back. Without it, somebody who taps the wrong
+             action has to wait out the timeout with a queue behind them. -->
+        <Button
+            android:id="@+id/cancelButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:minHeight="56dp"
+            android:text="@string/punch_cancel" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

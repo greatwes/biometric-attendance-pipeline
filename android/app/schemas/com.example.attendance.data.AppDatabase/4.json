@@ -1,0 +1,352 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "be3010451ad87c8a0711a62c984a9240",
+    "entities": [
+      {
+        "tableName": "employees",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pin` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `department` TEXT NOT NULL DEFAULT '', `gender` TEXT NOT NULL DEFAULT '', `enrolledAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL DEFAULT 0, `deletedAt` INTEGER, `pendingUpload` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`pin`))",
+        "fields": [
+          {
+            "fieldPath": "pin",
+            "columnName": "pin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstName",
+            "columnName": "firstName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastName",
+            "columnName": "lastName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "department",
+            "columnName": "department",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "gender",
+            "columnName": "gender",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "enrolledAt",
+            "columnName": "enrolledAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pendingUpload",
+            "columnName": "pendingUpload",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pin"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_employees_pendingUpload",
+            "unique": false,
+            "columnNames": [
+              "pendingUpload"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_employees_pendingUpload` ON `${TABLE_NAME}` (`pendingUpload`)"
+          },
+          {
+            "name": "index_employees_lastName",
+            "unique": false,
+            "columnNames": [
+              "lastName"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_employees_lastName` ON `${TABLE_NAME}` (`lastName`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "fingerprints",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`employeePin` TEXT NOT NULL, `fingerIndex` INTEGER NOT NULL, `template` BLOB NOT NULL, `enrolledAt` INTEGER NOT NULL, `pendingUpload` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`employeePin`, `fingerIndex`), FOREIGN KEY(`employeePin`) REFERENCES `employees`(`pin`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "employeePin",
+            "columnName": "employeePin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerIndex",
+            "columnName": "fingerIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "template",
+            "columnName": "template",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enrolledAt",
+            "columnName": "enrolledAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pendingUpload",
+            "columnName": "pendingUpload",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "employeePin",
+            "fingerIndex"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fingerprints_employeePin",
+            "unique": false,
+            "columnNames": [
+              "employeePin"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fingerprints_employeePin` ON `${TABLE_NAME}` (`employeePin`)"
+          },
+          {
+            "name": "index_fingerprints_pendingUpload",
+            "unique": false,
+            "columnNames": [
+              "pendingUpload"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fingerprints_pendingUpload` ON `${TABLE_NAME}` (`pendingUpload`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "employees",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "employeePin"
+            ],
+            "referencedColumns": [
+              "pin"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "punches",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `logId` TEXT NOT NULL, `employeePin` TEXT NOT NULL, `punchedAt` INTEGER NOT NULL, `location` TEXT NOT NULL DEFAULT '', `punchType` INTEGER NOT NULL, `verifyMode` INTEGER NOT NULL, `matchScore` INTEGER NOT NULL, `uploadedAt` INTEGER, `attempts` INTEGER NOT NULL, `lastError` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logId",
+            "columnName": "logId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "employeePin",
+            "columnName": "employeePin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "punchedAt",
+            "columnName": "punchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "location",
+            "columnName": "location",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "punchType",
+            "columnName": "punchType",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifyMode",
+            "columnName": "verifyMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchScore",
+            "columnName": "matchScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uploadedAt",
+            "columnName": "uploadedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_punches_logId",
+            "unique": true,
+            "columnNames": [
+              "logId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_punches_logId` ON `${TABLE_NAME}` (`logId`)"
+          },
+          {
+            "name": "index_punches_uploadedAt",
+            "unique": false,
+            "columnNames": [
+              "uploadedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_punches_uploadedAt` ON `${TABLE_NAME}` (`uploadedAt`)"
+          },
+          {
+            "name": "index_punches_employeePin",
+            "unique": false,
+            "columnNames": [
+              "employeePin"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_punches_employeePin` ON `${TABLE_NAME}` (`employeePin`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "departments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL DEFAULT 0, `deletedAt` INTEGER, `pendingUpload` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`name`))",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pendingUpload",
+            "columnName": "pendingUpload",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "name"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'be3010451ad87c8a0711a62c984a9240')"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Light, not DayNight. The parent was DayNight.DarkActionBar, which meant
+        the whole palette flipped if anyone ever turned on the system dark mode
+        - on a wall-mounted terminal that would silently invert a screen tuned
+        for daylight, and nobody would connect the two. Pinning it to Light
+        makes the theme mean what it says.
+    -->
+    <style name="Theme.ZKAttendance" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="colorPrimary">@color/forest_green</item>
+        <item name="colorPrimaryVariant">@color/forest_green_dark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/forest_green</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+
+        <item name="android:colorBackground">@color/surface_page</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+
+        <item name="android:statusBarColor">@color/forest_green_dark</item>
+        <!-- Light icons in the status bar: it sits on the dark green header. -->
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Every filled button in the app carries a coloured backgroundTint,
+             so its label is always white. Left to the light theme it would
+             resolve to dark-on-dark. -->
+        <item name="materialButtonStyle">@style/Widget.ZK.Button</item>
+    </style>
+
+    <style name="Widget.ZK.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textColor">@android:color/white</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+</resources>

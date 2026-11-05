@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/serverUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/server_url"
+            android:inputType="textUri"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/sharedSecret"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/shared_secret"
+            android:inputType="textPassword"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/deviceSn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/device_serial"
+            android:inputType="text"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/threshold"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/match_threshold"
+            android:inputType="number"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/debounce"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/debounce_seconds"
+            android:inputType="number"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/adminPin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:hint="@string/admin_pin_hint"
+            android:inputType="numberPassword"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <Button
+            android:id="@+id/saveSettingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/tile_settings"
+            android:text="@string/save" />
+
+        <TextView
+            android:id="@+id/settingsWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/state_pending"
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>

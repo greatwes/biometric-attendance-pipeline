@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Classic Academic Heritage.
+
+        Two layers on purpose: the brand hexes are declared once at the top, and
+        everything the UI actually references is a semantic token pointing at
+        them. Changing the palette again means editing the top block only - no
+        layout has a raw hex or a brand name in it.
+    -->
+
+    <!-- ── Brand ───────────────────────────────────────────────────────── -->
+    <color name="forest_green">#1B4228</color>
+    <!-- Derived for the status bar; the brief does not specify one and a flat
+         header against a same-coloured status bar loses the top edge. -->
+    <color name="forest_green_dark">#12301C</color>
+    <color name="burgundy">#6B1D2F</color>
+    <color name="dark_yellow">#D99B00</color>
+    <color name="off_white">#FDFBF7</color>
+    <color name="card_white">#FFFFFF</color>
+    <color name="ink">#142216</color>
+
+    <!-- Derived, not given. Muted text at 4.6:1 on off-white - a lighter grey
+         would be the usual choice and would fail on a screen read at arm's
+         length in daylight. -->
+    <color name="ink_muted">#4F5F52</color>
+    <!-- The "neat, structured borders" of the brief. Warm enough to sit with
+         off-white rather than looking like a stray grey. -->
+    <color name="hairline">#DDD6C8</color>
+
+    <!-- The leaf mark keeps its own brand hex; see drawable/leaf_mark.xml. -->
+    <color name="brand_green">#1B4228</color>
+    <color name="brand_green_dark">#12301C</color>
+
+    <!-- ── Surfaces and text ───────────────────────────────────────────── -->
+    <color name="surface_page">@color/off_white</color>
+    <color name="surface_card">@color/card_white</color>
+    <color name="text_primary">@color/ink</color>
+    <color name="text_muted">@color/ink_muted</color>
+
+    <!--
+        ── Delivery and sync state ──────────────────────────────────────────
+        The brief names these Present / Absent / Late. This app has no such
+        concepts and deliberately never has: there are no shift or lateness
+        rules anywhere in it, which is why the dashboard says "Not Seen Today"
+        rather than "Absent". Inventing the states to fit the palette would put
+        a judgement in the data that nobody defined.
+
+        So the three colours carry the states that do exist, in the same order
+        of severity: delivered, waiting, rejected.
+    -->
+    <color name="state_sent">@color/forest_green</color>
+    <!--
+        NOT the brief's #D99B00. These three are rendered as TEXT on off-white,
+        and #D99B00 lands at 2.4:1 there - below the 4.5:1 floor and genuinely
+        hard to read, which for the one badge that means "this has not reached
+        the server yet" is the worst possible candidate for a colour nobody can
+        see. This is the same hue darkened to 4.9:1.
+
+        The brief's exact #D99B00 is still used at full strength wherever it is
+        a fill rather than type - see dark_yellow above.
+    -->
+    <color name="state_pending">#8A6A08</color>
+    <color name="state_failed">@color/burgundy</color>
+
+    <!-- ── Status card borders ─────────────────────────────────────────── -->
+    <color name="status_idle">@color/hairline</color>
+    <color name="status_accept">@color/forest_green</color>
+    <color name="status_reject">@color/burgundy</color>
+    <color name="status_neutral">@color/hairline</color>
+    <color name="status_error">@color/burgundy</color>
+
+    <!--
+        ── Punch buttons ───────────────────────────────────────────────────
+        Paired by meaning, not by variety. The two full-shift actions are the
+        saturated pair; the two temporary ones are quieter, so a glance at
+        colour alone separates "leaving for the day" from "stepping out".
+        All four take white text - checked at 4.5:1 or better.
+    -->
+    <color name="btn_clock_in">@color/forest_green</color>
+    <color name="btn_clock_out">@color/burgundy</color>
+    <color name="btn_check_out">#8A6A08</color>
+    <color name="btn_check_in">#2F5D3F</color>
+
+    <!-- ── Admin menu tiles ────────────────────────────────────────────── -->
+    <color name="tile_enrol">@color/forest_green</color>
+    <color name="tile_staff">#2F5D3F</color>
+    <color name="tile_records">@color/burgundy</color>
+    <color name="tile_settings">#4F5F52</color>
+    <color name="tile_location">#8A6A08</color>
+    <color name="tile_departments">#3E3A55</color>
+</resources>

@@ -1,0 +1,244 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Staff Attendance - Classic Academic Heritage
+
+   Same palette as the terminal (android/app/src/main/res/values/colors.xml), so
+   the dashboard and the door read as one system. Two layers, as there: brand
+   hexes declared once, everything else a semantic token pointing at them.
+
+   Scoped under .att-app because Dataiku supplies the page wrapper and its own
+   chrome sits outside this tree - unscoped element selectors would leak into
+   the Dataiku shell.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.att-app {
+  /* Brand */
+  --forest:        #1B4228;
+  --forest-dark:   #12301C;
+  --forest-light:  #2F5D3F;
+  --burgundy:      #6B1D2F;
+  --dark-yellow:   #D99B00;
+  --off-white:     #FDFBF7;
+  --card:          #FFFFFF;
+  --ink:           #142216;
+
+  /* Derived. ink-muted is 4.6:1 on off-white; a lighter grey is the usual
+     choice and fails on a screen someone reads at a glance. */
+  --ink-muted:     #4F5F52;
+  --hairline:      #DDD6C8;
+
+  /* State. yellow-text is NOT --dark-yellow: #D99B00 as type on off-white is
+     2.4:1, below the 4.5:1 floor. Same hue darkened to 4.9:1. The bright value
+     is kept for fills, where dark text sits on it. */
+  --state-in:      var(--forest);
+  --state-out:     var(--burgundy);
+  --state-step:    #8A6A08;
+  --state-none:    var(--ink-muted);
+
+  --radius:        8px;
+
+  color: var(--ink);
+  background: var(--off-white);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+               Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 20px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.att-app *,
+.att-app *::before,
+.att-app *::after { box-sizing: inherit; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.att-app .app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--forest);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+.att-app .app-title h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+.att-app .app-sub { margin: 2px 0 0; font-size: 13px; opacity: .82; }
+.att-app .app-status { display: flex; align-items: center; gap: 10px; }
+
+.att-app .pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: 999px; padding: 5px 12px;
+  font-size: 13px; font-weight: 600;
+  background: rgba(255,255,255,.14); color: #fff;
+}
+.att-app .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.att-app .pill-ok    { background: rgba(255,255,255,.2); }
+.att-app .pill-warn  { background: var(--dark-yellow); color: var(--ink); }
+.att-app .pill-bad   { background: var(--burgundy); color: #fff; }
+.att-app .pill-muted { opacity: .75; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.att-app .btn {
+  font: inherit; font-weight: 600;
+  border: 1px solid transparent; border-radius: var(--radius);
+  padding: 8px 14px; cursor: pointer;
+  background: var(--forest-light); color: #fff;
+  /* 44px is the minimum comfortable touch target; this is used on tablets. */
+  min-height: 38px;
+}
+.att-app .btn:hover { filter: brightness(1.08); }
+.att-app .btn:focus-visible { outline: 3px solid var(--dark-yellow); outline-offset: 2px; }
+.att-app .btn-ghost {
+  background: transparent; color: #fff; border-color: rgba(255,255,255,.45);
+}
+.att-app .btn-quiet {
+  background: var(--card); color: var(--ink); border-color: var(--hairline);
+}
+.att-app .btn-danger { background: var(--burgundy); color: #fff; }
+.att-app .btn-sm { padding: 4px 10px; min-height: 30px; font-size: 13px; }
+.att-app .auto-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.att-app .cards {
+  display: grid; gap: 12px; margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.att-app .card {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+/* The occupancy cards carry a coloured left edge rather than a coloured fill,
+   so the number stays ink on white and readable. */
+.att-app .card-in   { border-left: 4px solid var(--state-in); }
+.att-app .card-step { border-left: 4px solid var(--state-step); }
+.att-app .card-out  { border-left: 4px solid var(--state-out); }
+.att-app .card-quiet { background: transparent; }
+
+.att-app .card-label {
+  font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.att-app .card-value { font-size: 34px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+.att-app .card-foot { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.att-app .tabs {
+  display: flex; gap: 4px; margin: 20px 0 0;
+  border-bottom: 2px solid var(--hairline); flex-wrap: wrap;
+}
+.att-app .tab {
+  font: inherit; font-weight: 600; cursor: pointer;
+  background: transparent; border: none; color: var(--ink-muted);
+  padding: 10px 16px; border-bottom: 3px solid transparent; margin-bottom: -2px;
+}
+.att-app .tab:hover { color: var(--ink); }
+.att-app .tab.is-active { color: var(--forest); border-bottom-color: var(--forest); }
+.att-app .tab:focus-visible { outline: 3px solid var(--dark-yellow); outline-offset: -3px; }
+
+.att-app .panel { display: none; padding-top: 14px; }
+.att-app .panel.is-active { display: block; }
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+.att-app .panel-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.att-app .spacer { flex: 1; }
+.att-app .muted { color: var(--ink-muted); font-size: 13px; }
+
+.att-app .input {
+  font: inherit; color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--hairline); border-radius: var(--radius);
+  padding: 8px 12px; min-height: 38px; min-width: 220px;
+}
+.att-app .input:focus-visible { outline: 3px solid var(--dark-yellow); outline-offset: 1px; border-color: var(--forest); }
+.att-app .input-date { min-width: 150px; }
+.att-app .range-label {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--ink-muted);
+}
+.att-app select.input { min-width: 150px; }
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.att-app .table-scroll {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+.att-app .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.att-app .data-table th {
+  text-align: left; font-size: 12px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted);
+  padding: 11px 14px; border-bottom: 1px solid var(--hairline);
+  background: var(--off-white); position: sticky; top: 0;
+}
+.att-app .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--hairline); }
+.att-app .data-table tr:last-child td { border-bottom: none; }
+.att-app .data-table tbody tr:hover { background: #F6F3EC; }
+.att-app .row-empty td { text-align: center; color: var(--ink-muted); padding: 28px; }
+.att-app .num { font-variant-numeric: tabular-nums; }
+.att-app .strong { font-weight: 600; }
+
+/* ── Presence badges ─────────────────────────────────────────────────────── */
+.att-app .badge {
+  display: inline-block; border-radius: 999px;
+  padding: 3px 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  border: 1px solid currentColor;
+}
+.att-app .badge-in   { color: var(--state-in); }
+.att-app .badge-out  { color: var(--state-out); }
+.att-app .badge-step { color: var(--state-step); }
+.att-app .badge-none { color: var(--state-none); }
+.att-app .voided { opacity: .5; text-decoration: line-through; }
+
+/* ── Banners ─────────────────────────────────────────────────────────────── */
+.att-app .error-banner,
+.att-app .ok-banner {
+  margin-top: 14px; padding: 11px 14px;
+  border-radius: var(--radius); font-size: 14px; font-weight: 600;
+}
+.att-app .error-banner { background: var(--burgundy); color: #fff; }
+.att-app .ok-banner { background: var(--forest); color: #fff; }
+
+/* ── Dialog ──────────────────────────────────────────────────────────────── */
+.att-app .modal-backdrop {
+  position: fixed; inset: 0; background: rgba(20,34,22,.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+}
+/* This rule is load-bearing, not tidying.
+   The `hidden` attribute works by way of `display: none` in the user-agent
+   stylesheet, and ANY author rule setting display beats it. Without this, the
+   `display: flex` above wins and both dialogs sit permanently open over the
+   page, with Cancel doing nothing visible - which is exactly what happened on
+   first deploy. */
+.att-app .modal-backdrop[hidden] { display: none; }
+.att-app .modal {
+  background: var(--card); border-radius: var(--radius);
+  padding: 22px; width: 100%; max-width: 440px;
+  border-top: 4px solid var(--forest);
+}
+.att-app .modal h2 { margin: 0 0 4px; font-size: 19px; }
+.att-app .modal .modal-sub { margin: 0 0 16px; color: var(--ink-muted); font-size: 13px; }
+.att-app .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+/* A visible label as well as any placeholder: a placeholder disappears the
+   moment somebody types, leaving an unlabelled box. */
+.att-app .field label { font-size: 12px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .04em; color: var(--ink-muted); }
+.att-app .field .input { min-width: 0; width: 100%; }
+.att-app .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.att-app .modal-warn {
+  background: #FBF3E0; border-left: 3px solid var(--dark-yellow);
+  padding: 9px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 14px;
+}
+
+.att-app .app-foot { margin-top: 18px; font-size: 12px; color: var(--ink-muted); }
+
+@media (max-width: 640px) {
+  .att-app { padding: 12px; }
+  .att-app .app-header { flex-direction: column; align-items: flex-start; }
+  .att-app .card-value { font-size: 28px; }
+  .att-app .input { min-width: 0; flex: 1; }
+}

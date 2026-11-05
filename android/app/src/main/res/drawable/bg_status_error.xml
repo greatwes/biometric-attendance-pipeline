@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Filled, not outlined. A 3dp border was too quiet to read from a queue - the
+    result of a punch has to be obvious before anyone reads a word of it.
+    Everything on this card is therefore white; see MainActivity.showStatus,
+    which flips the text colours with the background. The two must change
+    together or the message goes white-on-white.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/status_error" />
+    <corners android:radius="8dp" />
+</shape>

@@ -1,0 +1,151 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "8f16443225aa747593940892ba6da36f",
+    "entities": [
+      {
+        "tableName": "employees",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pin` TEXT NOT NULL, `name` TEXT NOT NULL, `template` BLOB NOT NULL, `enrolledAt` INTEGER NOT NULL, `pendingUpload` INTEGER NOT NULL, PRIMARY KEY(`pin`))",
+        "fields": [
+          {
+            "fieldPath": "pin",
+            "columnName": "pin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "template",
+            "columnName": "template",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enrolledAt",
+            "columnName": "enrolledAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pendingUpload",
+            "columnName": "pendingUpload",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pin"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "punches",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `logId` TEXT NOT NULL, `employeePin` TEXT NOT NULL, `punchedAt` INTEGER NOT NULL, `punchType` INTEGER NOT NULL, `verifyMode` INTEGER NOT NULL, `matchScore` INTEGER NOT NULL, `uploadedAt` INTEGER, `attempts` INTEGER NOT NULL, `lastError` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logId",
+            "columnName": "logId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "employeePin",
+            "columnName": "employeePin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "punchedAt",
+            "columnName": "punchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "punchType",
+            "columnName": "punchType",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifyMode",
+            "columnName": "verifyMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchScore",
+            "columnName": "matchScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uploadedAt",
+            "columnName": "uploadedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_punches_logId",
+            "unique": true,
+            "columnNames": [
+              "logId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_punches_logId` ON `${TABLE_NAME}` (`logId`)"
+          },
+          {
+            "name": "index_punches_uploadedAt",
+            "unique": false,
+            "columnNames": [
+              "uploadedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_punches_uploadedAt` ON `${TABLE_NAME}` (`uploadedAt`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8f16443225aa747593940892ba6da36f')"
+    ]
+  }
+}

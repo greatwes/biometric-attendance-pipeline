@@ -1,0 +1,257 @@
+<!--
+  Paste into the "HTML" tab of the Dataiku standard web app.
+  Dataiku supplies the <!doctype>, <html>, <head> and <body> wrapper, so this
+  file contains body content only - adding those tags here breaks the editor.
+-->
+
+<div class="att-app">
+
+  <header class="app-header">
+    <div class="app-title">
+      <h1>Staff Attendance</h1>
+      <p class="app-sub">ZKTeco C6 &middot; live ADMS feed</p>
+    </div>
+    <div class="app-status">
+      <span id="device-pill" class="pill pill-muted">
+        <span class="dot"></span><span id="device-text">checking device&hellip;</span>
+      </span>
+      <button id="refresh-btn" class="btn btn-ghost" type="button">Refresh</button>
+      <label class="auto-toggle">
+        <input type="checkbox" id="auto-refresh" checked>
+        <span>Auto</span>
+      </label>
+    </div>
+  </header>
+
+  <div id="error-banner" class="error-banner" hidden></div>
+  <div id="ok-banner" class="ok-banner" hidden></div>
+
+  <!-- ── Occupancy ─────────────────────────────────────────────────────────
+       The three coloured cards answer "who is here right now", from the most
+       recent punch each person made today. Stepped Out is its own figure
+       rather than folded into either side - somebody at the bank for twenty
+       minutes is neither present at their desk nor gone for the day.
+  -->
+  <section class="cards" aria-label="Summary">
+    <article class="card card-in">
+      <div class="card-label">In the Office</div>
+      <div class="card-value num" id="stat-in">&ndash;</div>
+      <div class="card-foot">last punch was Clock In or Back on Seat</div>
+    </article>
+
+    <article class="card card-step">
+      <div class="card-label">Stepped Out</div>
+      <div class="card-value num" id="stat-step">&ndash;</div>
+      <div class="card-foot">temporarily out, expected back</div>
+    </article>
+
+    <article class="card card-out">
+      <div class="card-label">Left for the Day</div>
+      <div class="card-value num" id="stat-left">&ndash;</div>
+      <div class="card-foot">clocked out</div>
+    </article>
+
+    <article class="card">
+      <div class="card-label">Punches Today</div>
+      <div class="card-value num" id="stat-punches">&ndash;</div>
+      <div class="card-foot" id="stat-present-foot">&ndash; staff seen</div>
+    </article>
+
+    <article class="card card-quiet">
+      <div class="card-label">Not in Today</div>
+      <div class="card-value num" id="stat-unseen">&ndash;</div>
+      <!--
+        "Not in Today", never "Absent". No shift rules exist, and a terminal
+        that lost its network for an hour produces the same signal as somebody
+        who stayed home. Calling that "Absent" on a screen managers act on is a
+        payroll dispute waiting to happen.
+      -->
+      <div class="card-foot" id="stat-bio-foot">enrolled, no punch today</div>
+    </article>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab is-active" data-tab="presence" role="tab">Who&rsquo;s In</button>
+    <button class="tab" data-tab="stream" role="tab">Attendance Records</button>
+    <button class="tab" data-tab="roster" role="tab">Staff</button>
+  </nav>
+
+  <!-- ── Who's in ──────────────────────────────────────────────────────────-->
+  <section class="panel is-active" id="panel-presence" role="tabpanel">
+    <div class="panel-bar">
+      <input type="search" id="presence-search" class="input"
+             placeholder="Search a staff member by name, SF ID or department&hellip;"
+             autocomplete="off" aria-label="Search staff">
+      <select id="presence-district" class="input" aria-label="Filter by district">
+        <option value="">All districts</option>
+      </select>
+      <select id="presence-filter" class="input" aria-label="Filter by presence">
+        <option value="">All states</option>
+        <option value="In the Office">In the Office</option>
+        <option value="Temporarily Out of Office">Temporarily Out of Office</option>
+        <option value="Left the Office">Left the Office</option>
+        <option value="Not in Today">Not in Today</option>
+      </select>
+      <span class="spacer"></span>
+      <span class="muted" id="presence-count"></span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Staff</th>
+            <th class="col-pin">SF ID</th>
+            <th>Department</th>
+            <th>District</th>
+            <th>Status</th>
+            <th>Last Punch</th>
+          </tr>
+        </thead>
+        <tbody id="presence-body">
+          <tr class="row-empty"><td colspan="6">Loading&hellip;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Attendance records ────────────────────────────────────────────────-->
+  <section class="panel" id="panel-stream" role="tabpanel">
+    <div class="panel-bar">
+      <input type="search" id="stream-search" class="input"
+             placeholder="Filter by name or SF ID&hellip;" autocomplete="off"
+             aria-label="Filter records">
+      <select id="stream-district" class="input" aria-label="Filter by district">
+        <option value="">All districts</option>
+      </select>
+      <label class="range-label" for="stream-from">From</label>
+      <input type="date" id="stream-from" class="input input-date" aria-label="From date">
+      <label class="range-label" for="stream-to">To</label>
+      <input type="date" id="stream-to" class="input input-date" aria-label="To date">
+      <label class="auto-toggle">
+        <input type="checkbox" id="stream-all-dates">
+        <span>All dates</span>
+      </label>
+      <button id="export-btn" class="btn btn-quiet" type="button">Export CSV</button>
+      <span class="spacer"></span>
+      <span class="muted" id="stream-count"></span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Staff</th>
+            <th class="col-pin">SF ID</th>
+            <th>Event</th>
+            <th>District</th>
+            <th>Verification</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="stream-body">
+          <tr class="row-empty"><td colspan="7">Loading&hellip;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Staff ─────────────────────────────────────────────────────────────-->
+  <section class="panel" id="panel-roster" role="tabpanel">
+    <div class="panel-bar">
+      <input type="search" id="roster-search" class="input"
+             placeholder="Search name, SF ID or department&hellip;" autocomplete="off"
+             aria-label="Search staff">
+      <span class="spacer"></span>
+      <span class="muted" id="roster-count"></span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Staff</th>
+            <th class="col-pin">SF ID</th>
+            <th>Department</th>
+            <th>Fingerprints</th>
+            <th>Last Seen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="roster-body">
+          <tr class="row-empty"><td colspan="6">Loading&hellip;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="app-foot">
+    <span id="last-updated">&nbsp;</span>
+  </footer>
+
+  <!-- ── Edit staff ────────────────────────────────────────────────────────-->
+  <div id="edit-modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <h2 id="edit-title">Edit staff</h2>
+      <p class="modal-sub" id="edit-sub"></p>
+
+      <div class="modal-warn">
+        Changes reach the terminals on the next roster sync &mdash; up to about
+        ten minutes. The SF ID cannot be changed: every punch ever recorded is
+        attributed to it.
+      </div>
+
+      <div class="field">
+        <label for="edit-first">First name</label>
+        <input type="text" id="edit-first" class="input" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="edit-last">Last name</label>
+        <input type="text" id="edit-last" class="input" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="edit-dept">Department</label>
+        <input type="text" id="edit-dept" class="input" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="edit-gender">Gender</label>
+        <select id="edit-gender" class="input">
+          <option value="">Select gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-quiet" type="button" data-close="edit-modal">Cancel</button>
+        <button class="btn" type="button" id="edit-save">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Void a punch ──────────────────────────────────────────────────────-->
+  <div id="void-modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="void-title">
+      <h2 id="void-title">Void this punch</h2>
+      <p class="modal-sub" id="void-sub"></p>
+
+      <div class="modal-warn">
+        The record is kept and marked void, with your name and the reason
+        against it. It disappears from every count and can be restored.
+        Attendance is used for pay, so nothing here is ever deleted outright.
+      </div>
+
+      <div class="field">
+        <label for="void-reason">Reason (required)</label>
+        <input type="text" id="void-reason" class="input" autocomplete="off"
+               placeholder="e.g. duplicate punch, tested by admin">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-quiet" type="button" data-close="void-modal">Cancel</button>
+        <button class="btn btn-danger" type="button" id="void-confirm">Void punch</button>
+      </div>
+    </div>
+  </div>
+</div>

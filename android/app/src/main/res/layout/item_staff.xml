@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One person in the staff list. The whole row is clickable and opens their
+     page; there are no per-row action buttons, because at arm's length on a
+     touchscreen a row of small buttons next to a name is how somebody deletes
+     the wrong person. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/staffName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            tools:text="171917  Asha Mwangi" />
+
+        <TextView
+            android:id="@+id/staffMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp"
+            tools:text="Field Ops · Male · 4 fingers" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/staffState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="0dp"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="Pending" />
+</LinearLayout>

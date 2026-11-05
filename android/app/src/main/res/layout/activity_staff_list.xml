@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/staffSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:autofillHints=""
+        android:hint="@string/staff_search_hint"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:minHeight="48dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_muted" />
+
+    <TextView
+        android:id="@+id/staffCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp" />
+
+    <!-- Sync breakdown, separate from the head-count. An admin needs to know
+         "42 enrolled" and "3 of them never reached the server" as two different
+         facts; merging them into one line hides the one that needs action. -->
+    <TextView
+        android:id="@+id/syncCounts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_muted"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/emptyMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="@color/text_muted"
+        android:textSize="15sp"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/staffList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:clipToPadding="false" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- Two different operations, deliberately not merged into one button.
+             "Push pending" sends what is already queued and is the everyday
+             action. "Re-sync all" re-queues the entire roster and is recovery
+             for a server that acknowledged rows it did not keep - much heavier,
+             and not something to trigger by accident. -->
+        <Button
+            android:id="@+id/pushPending"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:text="@string/push_all_pending" />
+
+        <Button
+            android:id="@+id/resyncAll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:text="@string/resync_all" />
+    </LinearLayout>
+</LinearLayout>

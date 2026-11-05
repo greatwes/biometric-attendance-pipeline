@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Deliberately close to activity_location.xml: an admin who has used one
+    should not have to learn the other. The difference that matters is the note
+    below the list - Location is per-device, this list is shared with every
+    terminal, and that is not something to leave anyone guessing about.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/departmentHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/department_setting"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/department_shared_note"
+            android:textColor="@color/text_muted"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/newDepartment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:autofillHints=""
+            android:hint="@string/department_new_hint"
+            android:inputType="textCapWords"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <Button
+            android:id="@+id/addDepartmentButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/tile_location"
+            android:text="@string/department_add" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/status_neutral" />
+
+        <!-- Populated at runtime: one row per department. -->
+        <LinearLayout
+            android:id="@+id/departmentList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/detailName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            tools:text="Asha Mwangi" />
+
+        <TextView
+            android:id="@+id/detailSfId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_muted"
+            android:textSize="16sp"
+            tools:text="SF ID 171917" />
+
+        <TextView
+            android:id="@+id/detailMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            tools:text="Field Ops · Male · 4 fingers" />
+
+        <TextView
+            android:id="@+id/detailEnrolled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp"
+            tools:text="Enrolled 2 September 2026" />
+
+        <TextView
+            android:id="@+id/detailState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="Pending" />
+
+        <!-- The reason the server rejected them, verbatim. Without this a
+             Failed badge tells an admin something is wrong but nothing about
+             what, and the only other copy is in logcat on a device nobody can
+             attach a laptop to. -->
+        <TextView
+            android:id="@+id/detailError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/state_failed"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="Last error: rejected (401) - shared secret wrong?" />
+
+        <Button
+            android:id="@+id/detailSync"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:backgroundTint="@color/tile_staff"
+            android:minHeight="56dp"
+            android:text="@string/staff_sync_now" />
+
+        <Button
+            android:id="@+id/detailEdit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="@color/tile_enrol"
+            android:minHeight="56dp"
+            android:text="@string/edit" />
+
+        <Button
+            android:id="@+id/detailDelete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="@color/tile_records"
+            android:minHeight="56dp"
+            android:text="@string/delete" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- WorkManager re-arms the periodic sync after a reboot. Without this the
+         queue sits undrained until somebody opens the app. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- The NIDFP sensor is reached over a USB/SCSI transport internally.
+         required=false so the APK still installs on a device for inspection. -->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+
+    <!-- allowBackup=false is deliberate: this database holds fingerprint
+         templates, and letting adb backup or a cloud sync copy it off the
+         device would put special-category personal data somewhere nobody is
+         auditing. usesCleartextTraffic=false stops a mistyped http:// URL
+         from silently shipping templates in the clear. -->
+    <application
+        android:name=".App"
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ZKAttendance"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- All admin screens are exported=false: they are reached only after
+             the PIN gate on MainActivity, and an exported enrolment screen
+             would let any app on the device start enrolment directly. -->
+        <activity
+            android:name=".AdminMenuActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".AdminActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".StaffListActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".RecordsActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".LocationActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".DepartmentActivity"
+            android:exported="false"
+            android:parentActivityName=".AdminMenuActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Parented to the staff list, not the menu, so Up returns to the
+             list the admin was searching rather than jumping two levels. -->
+        <activity
+            android:name=".StaffDetailActivity"
+            android:exported="false"
+            android:parentActivityName=".StaffListActivity"
+            android:screenOrientation="portrait" />
+
+    </application>
+</manifest>

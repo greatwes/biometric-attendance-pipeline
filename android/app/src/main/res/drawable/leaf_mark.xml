@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Generic placeholder brand mark (a simple leaf glyph), used only to exercise
+    the same icon slot and contrast rules the real app logo lives under.
+
+    #2E7D5B is a placeholder brand hex. On @color/surface_dark (#111827) it
+    lands at roughly 3.8:1, which clears the 3:1 WCAG threshold for a
+    graphical object. It would NOT clear 4.5:1, so this colour must never be
+    reused for text.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#2E7D5B"
+        android:pathData="M17,8C8,10 5.9,16.17 3.82,21.34l1.89,0.66l1.95,-0.46c0.26,-0.29 0.51,-0.58 0.74,-0.87 0.41,0.12 1.47,0.37 2.58,-0.09 1.51,-0.63 2.7,-2.44 3.24,-5.18 -2.47,2.44 -4.55,2.44 -4.55,2.44 -0.93,-0.69 -1.1,-1.56 -0.95,-2.47 0.93,0.24 3.65,0.36 5.58,-1.84 1.47,-1.67 2.22,-4.16 2.7,-7.53 -1.42,0.49 -3.07,0.96 -4.91,1.0z" />
+</vector>

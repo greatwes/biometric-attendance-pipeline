@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Attendance</string>
+    <string name="brand_description">Example Org</string>
+
+    <!-- Clock-in screen -->
+    <string name="place_finger">Place your finger</string>
+    <string name="place_finger_hint">Hold it flat on the sensor</string>
+    <string name="welcome">Welcome, %1$s</string>
+    <string name="recorded_at">Recorded at %1$s</string>
+    <string name="not_recognised">Not recognised</string>
+    <string name="try_again">Lift your finger and try again</string>
+    <string name="already_recorded">Already recorded, %1$s</string>
+    <string name="already_recorded_hint">Your clock-in a moment ago was saved</string>
+    <!-- Punch types. The wording on the button is what staff will call it.
+         These are labels over the ADMS state codes, never the codes themselves:
+         check_in is code 3 (Break-In, returning) and check_out is code 2
+         (Break-Out, leaving temporarily), and renaming them here changes not one
+         thing about what the device puts on the wire. The matching names in
+         Snowflake live in PUNCH_TYPES. -->
+    <string name="clock_in">Clock In</string>
+    <string name="clock_out">Clock Out</string>
+    <string name="check_in">Back on Seat</string>
+    <string name="check_out">Stepping Out</string>
+    <string name="choose_action">Choose an option</string>
+    <string name="choose_action_hint">Tap Clock In, Clock Out, Stepping Out or Back on Seat</string>
+    <string name="place_finger_for">%1$s</string>
+    <string name="already_recorded_action">%1$s already recorded for %2$s</string>
+
+    <!-- What a person sees after a successful punch. Two parts because the
+         status card has a large title and a smaller detail line; together they
+         read as one message. -->
+    <!-- The time is no longer part of these sentences: it is its own view, so
+         it can be set much larger and hidden for messages that have no time. -->
+    <string name="msg_clock_in_title">Welcome\n%1$s</string>
+    <string name="msg_clock_in_detail">You Clocked in at</string>
+    <string name="msg_clock_out_title">Thank You\n%1$s</string>
+    <string name="msg_clock_out_detail">for Contributing to the team today\nYou Clocked Out at</string>
+    <string name="msg_stepping_out_title">See you shortly\n%1$s</string>
+    <string name="msg_stepping_out_detail">You are Stepping Out at</string>
+    <string name="msg_back_on_seat_title">Welcome Back\n%1$s</string>
+    <string name="msg_back_on_seat_detail">You are Back at</string>
+    <string name="punch_cancel">Cancel</string>
+
+    <string name="sensor_unavailable">Sensor unavailable</string>
+    <string name="sensor_unavailable_hint">Restart the app. If it persists, restart the device.</string>
+
+    <string name="queue_clear">All records sent</string>
+    <string name="queue_one">1 record waiting to send</string>
+    <string name="queue_many">%1$d records waiting to send</string>
+
+    <string name="admin">Admin</string>
+    <string name="admin_access">Admin access</string>
+    <string name="admin_pin_hint">Admin PIN</string>
+    <string name="wrong_pin">Incorrect PIN</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Admin screen -->
+    <string name="enrolment">Enrol a member of staff</string>
+    <string name="sf_id">SF ID</string>
+    <string name="first_name">First name</string>
+    <string name="last_name">Last name</string>
+    <string name="full_name">Full name</string>
+    <string name="enrol">Enrol fingerprint</string>
+    <string name="enrol_need_all_fields">Fill in every field before enrolling</string>
+    <string name="enrol_need_departments">Add a department first — Admin ▸ Departments</string>
+    <string name="enrol_duplicate_sf_id">SF ID %1$s is already enrolled. Every SF ID must belong to one person.</string>
+    <string name="select_gender">Select gender</string>
+    <string name="select_department">Select department</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_female">Female</string>
+
+    <!-- Named fingers. Which specific fingers are captured, and in what order,
+         is fixed so that a re-enrolment collects the same ones and an operator
+         can be told what to ask for instead of guessing. The order matches
+         FingerSlot; changing it here changes nothing about the stored index. -->
+    <string name="finger_right_index">right index finger</string>
+    <string name="finger_right_thumb">right thumb</string>
+    <string name="finger_left_index">left index finger</string>
+    <string name="finger_left_thumb">left thumb</string>
+    <string name="enrol_press">Place your %1$s — sample %2$d of %3$d</string>
+    <string name="enrol_captured">Captured %2$d of %3$d for the %1$s. Lift your finger.</string>
+    <string name="enrol_same_finger">Different finger. Use the same one for all three samples.</string>
+    <string name="enrol_already">That finger is already enrolled to %1$s</string>
+    <string name="enrol_already_self">You already enrolled that finger as the %1$s. Use the one asked for.</string>
+    <string name="enrol_finger_done">%1$s saved (%2$d of %3$d)</string>
+    <string name="enrol_merge_failed">Could not combine the samples. Start again.</string>
+    <string name="enrol_done">%1$s enrolled with %2$d fingers</string>
+    <string name="preview_description">The fingerprint image just captured</string>
+    <string name="roster_entry">%1$s  %2$s — %3$d fingers</string>
+
+    <string name="roster">Enrolled staff</string>
+    <string name="nobody_enrolled">Nobody enrolled yet</string>
+    <plurals name="enrolled_count">
+        <item quantity="one">%d person enrolled</item>
+        <item quantity="other">%d people enrolled</item>
+    </plurals>
+
+    <!-- Location -->
+    <string name="location_is">Location: %1$s</string>
+    <string name="location_unset">Location not set — tap Admin to set it</string>
+    <string name="location_setting">Location</string>
+    <string name="location_current">Current location</string>
+    <string name="location_new_hint">New location name</string>
+    <string name="location_add">Add location</string>
+    <string name="location_set_default">Set as this device\'s location</string>
+    <string name="location_none_yet">No locations added yet</string>
+    <string name="location_saved">Device location set to %1$s</string>
+    <string name="location_removed">%1$s removed</string>
+
+    <!-- Admin menu -->
+    <string name="menu_enrol">Enrol Staff</string>
+    <string name="menu_staff">Enrolled Staff</string>
+    <string name="menu_records">Attendance Records</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_location">Location Setting</string>
+    <string name="menu_departments">Departments</string>
+
+    <!-- Departments -->
+    <string name="department_setting">Departments</string>
+    <string name="department_new_hint">New department name</string>
+    <string name="department_add">Add department</string>
+    <string name="department_none_yet">No departments added yet</string>
+    <string name="department_added">%1$s added</string>
+    <string name="department_exists">%1$s is already in the list</string>
+    <string name="department_removed">%1$s removed</string>
+    <string name="department_remove_warning">Remove %1$s from the list of departments?</string>
+    <string name="department_remove_in_use">%1$s has %2$d staff filed under it. They keep the department on their record, but it will no longer be offered when enrolling.</string>
+    <string name="department_shared_note">This list is shared with every terminal, so keep the spelling consistent.</string>
+
+    <!-- Sync status, shown per staff member -->
+    <string name="sync_synced">Synced</string>
+    <string name="sync_pending">Pending</string>
+    <string name="sync_failed">Failed</string>
+    <string name="sync_counts">%1$d synced · %2$d pending · %3$d failed</string>
+    <string name="staff_search_hint">Search by SF ID or name</string>
+    <string name="staff_no_matches">Nobody matches “%1$s”</string>
+    <string name="staff_row">%1$s · %2$s</string>
+    <string name="staff_fingers">%1$d fingers</string>
+
+    <!-- Staff detail -->
+    <string name="staff_detail">Staff</string>
+    <string name="staff_sync_now">Sync now</string>
+    <string name="staff_sync_queued">%1$s queued for upload</string>
+    <string name="staff_last_error">Last error: %1$s</string>
+    <string name="staff_enrolled_on">Enrolled %1$s</string>
+    <string name="staff_pending_delete">Deletion waiting to reach the server</string>
+    <string name="push_all_pending">Push all pending</string>
+    <string name="push_all_pending_done">%1$d row(s) queued</string>
+
+    <!-- Staff list / edit -->
+    <string name="department">Department</string>
+    <string name="gender">Gender</string>
+    <string name="staff_summary">%1$s · %2$s · %3$d fingers</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="save_changes">Save changes</string>
+    <string name="staff_updated">%1$s updated</string>
+    <string name="staff_deleted">%1$s deleted</string>
+
+    <!-- Re-sync: recovery when the server acknowledged rows it did not keep -->
+    <string name="resync_all">Re-sync all to server</string>
+    <string name="resync_title">Re-sync the whole roster?</string>
+    <string name="resync_body">%1$d staff records and %2$d fingerprint templates will be uploaded again.\n\nThis updates the server rather than duplicating, so it is safe to repeat. Use it when people are enrolled here but missing on the server.</string>
+    <string name="resync_confirm">Re-sync</string>
+    <string name="resync_queued">Queued %1$d staff and %2$d templates. Upload runs in the background.</string>
+    <string name="resync_nothing">Nothing enrolled to re-sync</string>
+    <string name="confirm_delete_title">Delete %1$s?</string>
+    <string name="confirm_delete_body">This removes their details and all %1$d fingerprints from this device, and tells the server to remove them from every other terminal. Attendance already recorded is kept.</string>
+
+    <!-- Attendance records -->
+    <string name="records">Attendance Records</string>
+    <string name="state_sent">Sent</string>
+    <string name="state_pending">Pending</string>
+    <string name="state_failed">Failed</string>
+    <string name="filter_all">All</string>
+    <string name="filter_from">From</string>
+    <string name="filter_to">To</string>
+    <string name="resend">Resend failed</string>
+    <string name="resend_done">%1$d records queued to resend</string>
+    <string name="no_records">No records match this filter</string>
+    <string name="record_line">%1$s · %2$s</string>
+    <plurals name="record_count">
+        <item quantity="one">%d record</item>
+        <item quantity="other">%d records</item>
+    </plurals>
+    <string name="not_configured_warning">Server URL or shared secret missing — nothing will upload</string>
+    <string name="location_remove_warning">Remove %1$s from the list of locations?</string>
+    <string name="location_remove_current_warning">%1$s is this device\'s current location. Removing it leaves the device with no location until you set another.</string>
+
+    <string name="settings">Settings</string>
+    <string name="server_url">Server URL</string>
+    <string name="shared_secret">Shared secret</string>
+    <string name="device_serial">Device serial</string>
+    <string name="match_threshold">Match threshold (30–100)</string>
+    <string name="debounce_seconds">Ignore repeat punches for (seconds)</string>
+    <string name="save">Save settings</string>
+    <string name="settings_saved">Settings saved</string>
+    <string name="https_required">Must start with https:// — fingerprint data cannot go over plain HTTP</string>
+    <string name="default_pin_warning">The admin PIN is still the default. Change it before deploying.</string>
+</resources>

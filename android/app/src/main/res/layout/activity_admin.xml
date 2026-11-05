@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Enrolment only. Settings moved to SettingsActivity and the roster to
+    StaffListActivity, so this screen does one thing - and it is the only screen
+    that owns the fingerprint sensor.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_page"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/enrolment"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/enrolPin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:autofillHints="username"
+            android:hint="@string/sf_id"
+            android:inputType="text"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/enrolFirstName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="personGivenName"
+            android:hint="@string/first_name"
+            android:inputType="textPersonName|textCapWords"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <EditText
+            android:id="@+id/enrolLastName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="personFamilyName"
+            android:hint="@string/last_name"
+            android:inputType="textPersonName|textCapWords"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <!--
+            Spinners rather than free text. Typed departments drift across
+            terminals immediately - "Field Ops" and "Field Operations" are two
+            departments to every dashboard - and a typed gender produces "M",
+            "male", "Male " and worse. Both lists are closed, so neither can.
+
+            Each carries a visible label AS WELL AS the "Select ..." first row.
+            The placeholder alone would be a placeholder-as-label, which
+            disappears the moment a value is picked - leaving two unlabelled
+            dropdowns and no way to tell which is which at a glance.
+        -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:labelFor="@id/enrolDepartment"
+            android:text="@string/department"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/enrolDepartment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:labelFor="@id/enrolGender"
+            android:text="@string/gender"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/enrolGender"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
+
+        <Button
+            android:id="@+id/enrolButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/tile_enrol"
+            android:text="@string/enrol" />
+
+        <TextView
+            android:id="@+id/enrolStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:minHeight="48dp"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+
+        <!-- The captured print, shown so the operator can see whether the
+             sensor actually read a usable image before blaming the finger.
+             scaleType=fitCenter because the sensor is 256x360, not square. -->
+        <ImageView
+            android:id="@+id/fingerprintPreview"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_status_idle"
+            android:contentDescription="@string/preview_description"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

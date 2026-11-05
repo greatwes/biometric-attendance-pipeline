@@ -1,0 +1,585 @@
+{
+  "name": "ZK ADMS Listener (Horus H1)",
+  "nodes": [
+    {
+      "id": "wh-cdata",
+      "name": "ADMS cdata",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        300
+      ],
+      "webhookId": "a1c0f6e2-0000-4000-8000-zkadmscdata0",
+      "parameters": {
+        "authentication": "headerAuth",
+        "multipleMethods": true,
+        "httpMethod": [
+          "GET",
+          "POST"
+        ],
+        "path": "iclock/cdata",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true,
+          "ipWhitelist": ""
+        }
+      },
+      "notes": "GET = handshake (must return the OPTIONS block). POST = data push.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iaGYiJpRuoQpE8cL",
+          "name": "X-ZK-Secret"
+        }
+      }
+    },
+    {
+      "id": "code-parse",
+      "name": "Parse ADMS Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════════════\n//  ZK ADMS push parser  ->  Snowflake MERGE statements\n//  n8n Code node · Language: JavaScript · Mode: \"Run Once for All Items\"\n//\n//  Input : one item from the Webhook node (Raw Body = true)\n//  Output: 0..N items, each { sql }, consumed by the Snowflake node, plus a\n//          responseText that the Respond node echoes back to the device.\n//\n//  This file is the editable source of truth. It is embedded verbatim in\n//  adms-listener.workflow.json - if you change one, change the other.\n// ═══════════════════════════════════════════════════════════════════════════\n\n// ── Configuration ──────────────────────────────────────────────────────────\nconst DB      = 'DEVELOPMENT';\nconst SCHEMA  = 'ATTENDANCE';\nconst FQ      = `${DB}.${SCHEMA}`;\n\n// Device UTC offset in whole hours, sent back in the handshake so the terminal\n// keeps its clock aligned. Lagos/WAT = 1, Kigali/CAT = 2, Nairobi/EAT = 3.\nconst DEVICE_TZ_OFFSET = 1;\n\n// Mirror every request body into RAW_PUSH_LOG. Leave true while commissioning\n// a new terminal - it is the only way to see what your firmware really sends.\n// Turn off once the parser is confirmed; it roughly doubles write volume.\nconst CAPTURE_RAW = true;\n\n// ── Small helpers ──────────────────────────────────────────────────────────\n\n// Snowflake honours backslash escapes inside string literals by default, so a\n// literal backslash has to be doubled as well as the quote. Base64 templates\n// contain neither, but staff names have contained both.\nfunction lit(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  return \"'\" + String(v).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"''\") + \"'\";\n}\n\nfunction num(v) {\n  const n = parseInt(String(v === null || v === undefined ? '' : v).trim(), 10);\n  return Number.isFinite(n) ? String(n) : 'NULL';\n}\n\n// Devices emit \"2026-08-24 08:31:07\"; a few firmwares use a T separator and\n// some drop the seconds. Anything that doesn't match is rejected rather than\n// coerced, because a wrong timestamp is worse than a missing punch.\nfunction normaliseTs(v) {\n  const m = String(v || '').trim()\n    .match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/);\n  if (!m) return null;\n  const p = (s, w) => String(s).padStart(w, '0');\n  return `${m[1]}-${p(m[2],2)}-${p(m[3],2)} ${p(m[4],2)}:${m[5]}:${m[6] || '00'}`;\n}\n\n// Every non-ATTLOG payload is TAB-joined \"Key=Value\" pairs. Keys are upper-cased\n// so that Tmp/TMP, Pin/PIN and the other per-firmware casing differences all\n// land in the same bucket.\nfunction kv(line) {\n  const out = {};\n  for (const part of line.split('\\t')) {\n    const eq = part.indexOf('=');\n    if (eq === -1) continue;              // stray or truncated field - skip it\n    out[part.slice(0, eq).trim().toUpperCase()] = part.slice(eq + 1);\n  }\n  return out;\n}\n\nfunction pick(o, ...keys) {\n  for (const k of keys) {\n    if (o[k] !== undefined && o[k] !== '') return o[k];\n  }\n  return null;\n}\n\n// ── Extract the request ────────────────────────────────────────────────────\nconst inItem  = $input.first();\nconst j       = inItem.json || {};\nconst query   = j.query || {};\nconst params  = j.params || {};\n\n// With \"Raw Body\" enabled the payload arrives as binary. Fall back through the\n// other shapes n8n can produce: a plain string when Content-Type is text/plain,\n// or - when the device sends application/x-www-form-urlencoded, which some ZK\n// firmware does - an object whose single *key* is the entire body.\nlet raw = '';\nconst bin = inItem.binary;\nif (bin && bin.data && bin.data.data) {\n  raw = Buffer.from(bin.data.data, 'base64').toString('utf8');\n} else if (typeof j.body === 'string') {\n  raw = j.body;\n} else if (j.body && typeof j.body === 'object') {\n  const keys = Object.keys(j.body);\n  raw = keys.length === 1 && j.body[keys[0]] === '' ? keys[0] : JSON.stringify(j.body);\n}\n\nconst deviceSn   = String(pick(query, 'SN', 'sn') || '').trim();\nconst tableParam = String(query.table || query.TABLE || '').toUpperCase();\nconst endpoint   = String(params.endpoint || 'cdata').toLowerCase();\n\n// Do NOT simply default a missing method to GET. Not every n8n version puts\n// `method` on the webhook item - older ones emit only headers/params/query/\n// body - and defaulting to GET makes the parser answer a POST with the\n// handshake OPTIONS block and silently discard the payload. That failure is\n// invisible from every angle: the device gets a 200 and believes the server is\n// healthy, the worker reports SUCCESS, and n8n marks the execution successful\n// because sqlCount 0 simply takes the false branch. It cost an afternoon.\n//\n// A push always carries a body and a table parameter; a handshake carries\n// neither. Infer from that when the field is absent, and only then fall back.\nconst declaredMethod = j.method || j.httpMethod ||\n  (j.headers && (j.headers['x-http-method-override'] || j.headers['X-HTTP-Method-Override']));\nconst method = String(\n  declaredMethod || ((raw.trim() || tableParam) ? 'POST' : 'GET')\n).toUpperCase();\n\nconst sqls = [];\n\n// ── Non-cdata endpoints ────────────────────────────────────────────────────\n// In the n8n workflow these have their own Webhook nodes and never reach this\n// code. The guard exists so the parser is still correct when it is driven by\n// tools/local_test_server.mjs or any other single-endpoint host - answering a\n// getrequest poll with an OPTIONS block would make the device re-run its\n// whole configuration handshake every ten seconds.\nif (endpoint === 'getrequest' || endpoint === 'devicecmd' || endpoint === 'ping') {\n  return [{\n    json: { route: endpoint, deviceSn, responseText: 'OK\\r\\n', sqlCount: 0 },\n  }];\n}\n\n// ── Handshake: GET /iclock/cdata ───────────────────────────────────────────\n// This is the single most important response in the whole protocol. The device\n// is asking \"what do you want from me?\". Replying \"OK\" tells it \"nothing\", and\n// it will then sit there forever pushing no data at all.\n//\n// TransFlag is the bitmask-as-wordlist of what to push. Realtime=1 makes\n// punches arrive within seconds instead of waiting for TransTimes.\nif (method === 'GET') {\n  const options = [\n    `GET OPTION FROM: ${deviceSn}`,\n    'Stamp=9999',\n    'OpStamp=0',\n    'ErrorDelay=30',\n    'Delay=10',\n    'TransTimes=00:00;14:00',\n    'TransInterval=1',\n    'TransFlag=TransData AttLog OpLog AttLog EnrollUser ChgUser EnrollFP ChgFP UserPic',\n    `TimeZone=${DEVICE_TZ_OFFSET}`,\n    'Realtime=1',\n    'Encrypt=0',\n  ].join('\\r\\n') + '\\r\\n';\n\n  return [{\n    json: {\n      route: 'handshake',\n      deviceSn,\n      responseText: options,\n      sqlCount: 0,\n    },\n  }];\n}\n\n// ── Raw capture ────────────────────────────────────────────────────────────\nif (CAPTURE_RAW) {\n  const qs = Object.entries(query).map(([k, v]) => `${k}=${v}`).join('&');\n  sqls.push(\n    `INSERT INTO ${FQ}.RAW_PUSH_LOG (DEVICE_SN, HTTP_METHOD, TABLE_PARAM, QUERY_STRING, RAW_BODY) ` +\n    `SELECT ${lit(deviceSn)}, ${lit(method)}, ${lit(tableParam)}, ${lit(qs.slice(0, 4000))}, ${lit(raw.slice(0, 1000000))}`\n  );\n}\n\n// ── Split into records ─────────────────────────────────────────────────────\nconst lines = raw.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);\n\n// A line may carry its own type tag, which overrides the ?table= parameter.\n// This matters because many firmwares push users and fingerprints inside\n// table=OPERLOG as \"USER PIN=...\" / \"FP PIN=...\" rather than using the\n// dedicated USERINFO and BIODATA tables at all.\nconst TAG = /^(USER|USERINFO|FP|BIODATA|OPLOG|ATTLOG|DEPARTMENT|DEPT)\\s+/i;\n\n// Deduplicate inside the batch. A MERGE whose source contains two rows with\n// the same key fails outright with \"Duplicate row detected during DML action\",\n// and devices genuinely do repeat lines within one push.\nconst users = new Map();\nconst bios  = new Map();\nconst punches = new Map();\nconst depts = new Map();\n\nlet skipped = 0;\n\nfor (const line of lines) {\n  const m    = line.match(TAG);\n  const tag  = m ? m[1].toUpperCase() : '';\n  const body = m ? line.slice(m[0].length) : line;\n  const kind = tag || tableParam;\n\n  try {\n    if (kind === 'ATTLOG') {\n      // ATTLOG is positional, not Key=Value:\n      //   PIN \\t Timestamp \\t State \\t VerifyMode \\t WorkCode \\t Rsv1 \\t Rsv2\n      //\n      // Field 5 carries the SITE, not a work code. Our app is the only client\n      // that reaches this endpoint - the C6 never pushed ADMS natively, which\n      // is why the app exists at all - and it puts the device's configured\n      // location there precisely because the slot was otherwise always empty.\n      // Keeping the row shape identical to a real terminal is what lets this\n      // parser and the MERGE stay unchanged in shape.\n      //\n      // If a genuine ZKTeco terminal is ever pointed at this endpoint, that\n      // device WILL put a work code in this field and it will land in LOCATION.\n      // Decide then; today there is no such device.\n      const f   = body.split('\\t');\n      const pin = (f[0] || '').trim();\n      const ts  = normaliseTs(f[1]);\n      if (!pin || !ts) { skipped++; continue; }\n      const logId = `${deviceSn}|${pin}|${ts}`;\n      punches.set(logId, {\n        logId, pin, ts,\n        punchType:  f[2],\n        verifyMode: f[3],\n        location:   (f[4] || '').trim() || null,\n      });\n\n    } else if (kind === 'USER' || kind === 'USERINFO') {\n      const r   = kv(body);\n      const pin = String(pick(r, 'PIN', 'PIN2', 'USERID') || '').trim();\n      if (!pin) { skipped++; continue; }\n\n      // Our app sends FirstName= and LastName=; a stock ZK terminal only knows\n      // Name=. Accept both and derive whichever is missing, so the two firmware\n      // families can push the same roster without one blanking the other's\n      // fields. Splitting on the FIRST space matches the device-side migration\n      // in AppDatabase.MIGRATION_3_4 - keep the two in step.\n      const whole = pick(r, 'NAME');\n      let first = pick(r, 'FIRSTNAME', 'FNAME', 'GIVENNAME');\n      let last  = pick(r, 'LASTNAME', 'LNAME', 'SURNAME');\n      if (!first && !last && whole) {\n        const t   = String(whole).trim();\n        const gap = t.indexOf(' ');\n        first = gap > 0 ? t.slice(0, gap) : t;\n        last  = gap > 0 ? t.slice(gap + 1).trim() : null;\n      }\n      const full = whole || [first, last].filter(Boolean).join(' ') || null;\n\n      // Tri-state, and it has to stay tri-state. Absent means \"this push says\n      // nothing about deletion\" - which is what every stock device and every\n      // partial update sends - and must leave the tombstone exactly as it is.\n      // Only an explicit 0 restores somebody. Collapsing absent and 0 together\n      // would make every routine roster push un-delete anybody a colleague\n      // removed on another terminal.\n      const rawDeleted = pick(r, 'DELETED', 'DELETEDAT', 'ISDELETED');\n      let deletedFlag = null;\n      if (rawDeleted !== null) {\n        const s = String(rawDeleted).trim().toLowerCase();\n        deletedFlag = (s === '0' || s === 'false' || s === '') ? 0 : 1;\n      }\n\n      users.set(pin, {\n        pin,\n        name: full,\n        first,\n        last,\n        card: pick(r, 'CARD', 'CARDNO'),\n        pri:  pick(r, 'PRI', 'PRIVILEGE'),\n        // Sent by our app as extra KEY=value pairs. USERINFO is key-value, not\n        // positional, so adding these cannot break a device that omits them -\n        // they simply arrive as null and COALESCE leaves the stored value.\n        dept:   pick(r, 'DEPT', 'DEPARTMENT'),\n        gender: pick(r, 'GENDER', 'SEX'),\n        deletedFlag,\n      });\n\n    } else if (kind === 'DEPARTMENT' || kind === 'DEPT') {\n      // The admin-managed department list. Same tri-state deletion rule as\n      // USERINFO above.\n      const r    = kv(body);\n      const name = String(pick(r, 'NAME', 'DEPT', 'DEPARTMENT') || '').trim();\n      if (!name) { skipped++; continue; }\n      const rawDeleted = pick(r, 'DELETED', 'DELETEDAT', 'ISDELETED');\n      let deletedFlag = null;\n      if (rawDeleted !== null) {\n        const s = String(rawDeleted).trim().toLowerCase();\n        deletedFlag = (s === '0' || s === 'false' || s === '') ? 0 : 1;\n      }\n      depts.set(name, { name, deletedFlag });\n\n    } else if (kind === 'FP' || kind === 'BIODATA') {\n      const r   = kv(body);\n      const pin = String(pick(r, 'PIN', 'PIN2', 'USERID') || '').trim();\n      const tpl = pick(r, 'TMP', 'TEMPLATE', 'TEMPLATEDATA');\n      if (!pin || !tpl) { skipped++; continue; }\n      const idx = num(pick(r, 'FID', 'INDEX', 'NO', 'FINGERID'));\n      const key = `${pin}|${idx}`;\n      bios.set(key, {\n        pin,\n        idx,\n        tpl,\n        type:  pick(r, 'TYPE'),\n        size:  pick(r, 'SIZE'),\n        valid: pick(r, 'VALID'),\n      });\n\n    } else {\n      // OPLOG and anything unrecognised: captured in RAW_PUSH_LOG, not parsed.\n      skipped++;\n    }\n  } catch (e) {\n    // One malformed line must never cost us the rest of the batch - if we\n    // throw here the device gets a 500 and re-sends everything forever.\n    skipped++;\n  }\n}\n\n// ── Build the MERGEs ───────────────────────────────────────────────────────\n// One multi-row MERGE per table rather than one statement per record.\n// Snowflake charges warehouse time per statement and handles tiny single-row\n// DML badly; a 60-punch batch should be one round trip, not sixty.\n\nif (punches.size) {\n  const rows = [...punches.values()].map(p =>\n    `(${lit(p.logId)}, ${lit(p.pin)}, ${lit(p.ts)}, ${num(p.punchType)}, ${num(p.verifyMode)}, ${lit(p.location)}, ${lit(deviceSn)})`\n  ).join(',\\n         ');\n\n  sqls.push(\n// Explicit casts matter: if every row of a column is NULL, Snowflake cannot\n// infer its type from the VALUES list and the MERGE fails at parse time.\n// LOCATION is NULL for any punch taken before a site was configured on the\n// device, and PUNCH_TYPE is routinely all one value.\n//\n// Still INSERT-only on match: a re-sent batch must not rewrite a punch that is\n// already recorded. LOG_ID is the only thing preventing duplicates - Snowflake\n// enforces no uniqueness - so the idempotency lives entirely in this ON clause.\n`MERGE INTO ${FQ}.ATTENDANCE_LOGS t\nUSING (\n  SELECT c1::VARCHAR                 AS LOG_ID,\n         c2::VARCHAR                 AS EMPLOYEE_PIN,\n         TO_TIMESTAMP_NTZ(c3::VARCHAR) AS PUNCH_TS,\n         c4::NUMBER(3,0)             AS PUNCH_TYPE,\n         c5::NUMBER(3,0)             AS VERIFY_MODE,\n         c6::VARCHAR                 AS LOCATION,\n         c7::VARCHAR                 AS DEVICE_SN\n  FROM (VALUES ${rows}\n       ) AS v(c1, c2, c3, c4, c5, c6, c7)\n) s\nON t.LOG_ID = s.LOG_ID\nWHEN NOT MATCHED THEN INSERT\n  (LOG_ID, EMPLOYEE_PIN, PUNCH_TS, PUNCH_TYPE, VERIFY_MODE, LOCATION, DEVICE_SN)\n  VALUES (s.LOG_ID, s.EMPLOYEE_PIN, s.PUNCH_TS, s.PUNCH_TYPE, s.VERIFY_MODE, s.LOCATION, s.DEVICE_SN)`\n  );\n}\n\nif (users.size) {\n  const rows = [...users.values()].map(u =>\n    `(${lit(u.pin)}, ${lit(u.first)}, ${lit(u.last)}, ${lit(u.name)}, ${lit(u.card)}, ` +\n    `${num(u.pri)}, ${lit(u.dept)}, ${lit(u.gender)}, ` +\n    `${u.deletedFlag === null ? 'NULL' : String(u.deletedFlag)}, ${lit(deviceSn)})`\n  ).join(',\\n         ');\n\n  // COALESCE on update: a partial push (a card change with no Name field)\n  // must not blank out a name we already hold. That now covers DEPARTMENT and\n  // GENDER too - a device that does not send them leaves the stored values\n  // alone rather than clearing them, which matters once several devices push\n  // the same roster.\n  sqls.push(\n`MERGE INTO ${FQ}.EMPLOYEES t\nUSING (\n  SELECT c1::VARCHAR     AS DEVICE_PIN,\n         c2::VARCHAR     AS FIRST_NAME,\n         c3::VARCHAR     AS LAST_NAME,\n         c4::VARCHAR     AS FULL_NAME,\n         c5::VARCHAR     AS CARD_NO,\n         c6::NUMBER(3,0) AS PRIVILEGE,\n         c7::VARCHAR     AS DEPARTMENT,\n         c8::VARCHAR     AS GENDER,\n         c9::NUMBER(1,0) AS DELETED_FLAG,\n         c10::VARCHAR    AS DEVICE_SN\n  FROM (VALUES ${rows}\n       ) AS v(c1, c2, c3, c4, c5, c6, c7, c8, c9, c10)\n) s\nON t.DEVICE_PIN = s.DEVICE_PIN\nWHEN MATCHED THEN UPDATE SET\n  FIRST_NAME = COALESCE(s.FIRST_NAME, t.FIRST_NAME),\n  LAST_NAME  = COALESCE(s.LAST_NAME,  t.LAST_NAME),\n  FULL_NAME  = COALESCE(s.FULL_NAME,  t.FULL_NAME),\n  CARD_NO    = COALESCE(s.CARD_NO,    t.CARD_NO),\n  PRIVILEGE  = COALESCE(s.PRIVILEGE,  t.PRIVILEGE),\n  DEPARTMENT = COALESCE(s.DEPARTMENT, t.DEPARTMENT),\n  GENDER     = COALESCE(s.GENDER,     t.GENDER),\n  DEVICE_SN  = s.DEVICE_SN,\n  -- Tri-state, and the three cases are all different on purpose.\n  --\n  -- NULL means this push says nothing about deletion, which is what a stock\n  -- terminal and every partial update send: leave the tombstone alone. A\n  -- terminal that has not yet pulled a deletion keeps pushing that person's\n  -- roster row, and clearing the tombstone there would resurrect somebody an\n  -- admin removed - silently, on whichever device synced last.\n  --\n  -- 0 is an explicit restore, which only our app sends and only when an admin\n  -- asks for it. 1 is a deletion; COALESCE keeps the ORIGINAL deletion time so\n  -- a re-sent batch does not keep moving it forward and re-triggering pulls.\n  DELETED_AT = CASE\n                 WHEN s.DELETED_FLAG IS NULL THEN t.DELETED_AT\n                 WHEN s.DELETED_FLAG = 0     THEN NULL\n                 ELSE COALESCE(t.DELETED_AT, SYSDATE())\n               END,\n  UPDATED_AT = SYSDATE()\nWHEN NOT MATCHED THEN INSERT\n  (DEVICE_PIN, FIRST_NAME, LAST_NAME, FULL_NAME, CARD_NO, PRIVILEGE,\n   DEPARTMENT, GENDER, STATUS, DELETED_AT, DEVICE_SN)\n  VALUES (s.DEVICE_PIN, s.FIRST_NAME, s.LAST_NAME, s.FULL_NAME, s.CARD_NO, s.PRIVILEGE,\n          s.DEPARTMENT, s.GENDER, 'ACTIVE',\n          IFF(s.DELETED_FLAG = 1, SYSDATE(), NULL),\n          s.DEVICE_SN)`\n  );\n}\n\n// Departments before employees would be tidier, but the order of `sqls` is the\n// order they execute in and EMPLOYEES only references DEPARTMENTS through an\n// unenforced constraint, so it does not matter. What does matter is that this\n// runs at all: without it a department created on one terminal never leaves it.\nif (depts.size) {\n  const rows = [...depts.values()].map(d =>\n    `(${lit(d.name)}, ${d.deletedFlag === null ? 'NULL' : String(d.deletedFlag)}, ${lit(deviceSn)})`\n  ).join(',\\n         ');\n\n  sqls.push(\n`MERGE INTO ${FQ}.DEPARTMENTS t\nUSING (\n  SELECT c1::VARCHAR     AS NAME,\n         c2::NUMBER(1,0) AS DELETED_FLAG,\n         c3::VARCHAR     AS DEVICE_SN\n  FROM (VALUES ${rows}\n       ) AS v(c1, c2, c3)\n) s\nON t.NAME = s.NAME\nWHEN MATCHED THEN UPDATE SET\n  DELETED_AT = CASE\n                 WHEN s.DELETED_FLAG IS NULL THEN t.DELETED_AT\n                 WHEN s.DELETED_FLAG = 0     THEN NULL\n                 ELSE COALESCE(t.DELETED_AT, SYSDATE())\n               END,\n  DEVICE_SN  = s.DEVICE_SN,\n  UPDATED_AT = SYSDATE()\nWHEN NOT MATCHED THEN INSERT (NAME, DELETED_AT, DEVICE_SN)\n  VALUES (s.NAME, IFF(s.DELETED_FLAG = 1, SYSDATE(), NULL), s.DEVICE_SN)`\n  );\n}\n\nif (bios.size) {\n  const rows = [...bios.values()].map(b =>\n    `(${lit(b.pin)}, ${b.idx === 'NULL' ? 0 : b.idx}, ${lit(b.tpl)}, ${lit(b.type)}, ${num(b.size)}, ${b.valid === '0' ? 'FALSE' : 'TRUE'}, ${lit(deviceSn)})`\n  ).join(',\\n         ');\n\n  sqls.push(\n`MERGE INTO ${FQ}.BIOMETRIC_TEMPLATES t\nUSING (\n  SELECT c1::VARCHAR      AS EMPLOYEE_PIN,\n         c2::NUMBER(2,0)  AS FINGER_INDEX,\n         c3::VARCHAR      AS TEMPLATE_DATA,\n         c4::VARCHAR      AS TEMPLATE_TYPE,\n         c5::NUMBER(10,0) AS TEMPLATE_SIZE,\n         c6::BOOLEAN      AS IS_VALID,\n         c7::VARCHAR      AS DEVICE_SN\n  FROM (VALUES ${rows}\n       ) AS v(c1, c2, c3, c4, c5, c6, c7)\n) s\nON t.EMPLOYEE_PIN = s.EMPLOYEE_PIN AND t.FINGER_INDEX = s.FINGER_INDEX\nWHEN MATCHED THEN UPDATE SET\n  TEMPLATE_DATA = s.TEMPLATE_DATA,\n  TEMPLATE_TYPE = s.TEMPLATE_TYPE,\n  TEMPLATE_SIZE = s.TEMPLATE_SIZE,\n  IS_VALID      = s.IS_VALID,\n  DEVICE_SN     = s.DEVICE_SN,\n  UPDATED_AT    = SYSDATE()\nWHEN NOT MATCHED THEN INSERT\n  (EMPLOYEE_PIN, FINGER_INDEX, TEMPLATE_DATA, TEMPLATE_TYPE, TEMPLATE_SIZE, IS_VALID, DEVICE_SN)\n  VALUES (s.EMPLOYEE_PIN, s.FINGER_INDEX, s.TEMPLATE_DATA, s.TEMPLATE_TYPE, s.TEMPLATE_SIZE, s.IS_VALID, s.DEVICE_SN)`\n  );\n\n  // A PIN can push fingerprints before its USERINFO record arrives. Create a\n  // placeholder so the roster shows the person instead of losing them.\n  const pins = [...new Set([...bios.values()].map(b => b.pin))]\n    .map(p => `(${lit(p)})`).join(', ');\n  sqls.push(\n`MERGE INTO ${FQ}.EMPLOYEES t\nUSING (SELECT c1::VARCHAR AS DEVICE_PIN FROM (VALUES ${pins}) AS v(c1)) s\nON t.DEVICE_PIN = s.DEVICE_PIN\nWHEN NOT MATCHED THEN INSERT (DEVICE_PIN, STATUS, DEVICE_SN)\n  VALUES (s.DEVICE_PIN, 'ACTIVE', ${lit(deviceSn)})`\n  );\n}\n\n// ── Response ───────────────────────────────────────────────────────────────\n// \"OK: <n>\" where n is the record count is what ZK expects for a data push.\n// The device treats anything else as a failure and re-sends the batch.\nconst accepted = punches.size + users.size + bios.size + depts.size;\nconst responseText = `OK: ${accepted}\\r\\n`;\n\nconst meta = {\n  route: tableParam || 'unknown',\n  deviceSn,\n  accepted,\n  skipped,\n  lines: lines.length,\n  responseText,\n  sqlCount: sqls.length,\n};\n\nif (!sqls.length) {\n  return [{ json: { ...meta, sql: null } }];\n}\n\nreturn sqls.map((sql, i) => ({ json: { ...meta, sql, sqlIndex: i } }));\n"
+      }
+    },
+    {
+      "id": "if-write",
+      "name": "Needs DB Write?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "has-sql",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "leftValue": "={{ $json.sqlCount }}",
+              "rightValue": 0
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "dt-queue",
+      "name": "Queue for Dataiku",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ],
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "Udq1h8FqwPW9ZBmN",
+          "mode": "list",
+          "cachedResultName": "zk_pending_sql",
+          "cachedResultUrl": "/projects/XOPF8S5OUgPH3kAT/datatables/Udq1h8FqwPW9ZBmN"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sql": "={{ $json.sql }}",
+            "kind": "={{ $json.route }}",
+            "device_sn": "={{ $json.deviceSn }}",
+            "sql_index": "={{ $json.sqlIndex }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sql",
+              "displayName": "sql",
+              "type": "string",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "kind",
+              "displayName": "kind",
+              "type": "string",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "device_sn",
+              "displayName": "device_sn",
+              "type": "string",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sql_index",
+              "displayName": "sql_index",
+              "type": "number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "notes": "Confirm the table and column mapping in the UI after import - see README-queue.md."
+    },
+    {
+      "id": "respond-ok",
+      "name": "Respond to Device",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        760,
+        300
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Parse ADMS Request').first().json.responseText }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "wh-getrequest",
+      "name": "ADMS getrequest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        560
+      ],
+      "webhookId": "a1c0f6e2-0000-4000-8000-zkadmsgetreq",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "GET",
+        "path": "iclock/getrequest",
+        "responseMode": "responseNode",
+        "options": {
+          "ipWhitelist": ""
+        }
+      },
+      "notes": "Device polls this every Delay seconds for pending commands. \"OK\" = nothing queued.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iaGYiJpRuoQpE8cL",
+          "name": "X-ZK-Secret"
+        }
+      }
+    },
+    {
+      "id": "wh-devicecmd",
+      "name": "ADMS devicecmd",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        720
+      ],
+      "webhookId": "a1c0f6e2-0000-4000-8000-zkadmsdevcmd",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "iclock/devicecmd",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true,
+          "ipWhitelist": ""
+        }
+      },
+      "notes": "Command acknowledgement. Must return OK or the device retries the command forever.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iaGYiJpRuoQpE8cL",
+          "name": "X-ZK-Secret"
+        }
+      }
+    },
+    {
+      "id": "respond-plain",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        260,
+        640
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK\r\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "wh-pending",
+      "name": "Queue Pending",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        900
+      ],
+      "webhookId": "a1c0f6e2-0000-4000-8000-zkqueuepend0",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "GET",
+        "path": "zk/pending",
+        "responseMode": "responseNode",
+        "options": {
+          "ipWhitelist": ""
+        }
+      },
+      "notes": "Dataiku polls this. Same X-ZK-Secret credential as the device uses.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iaGYiJpRuoQpE8cL",
+          "name": "X-ZK-Secret"
+        }
+      }
+    },
+    {
+      "id": "dt-pending",
+      "name": "Read Queue",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        260,
+        900
+      ],
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "Udq1h8FqwPW9ZBmN",
+          "mode": "list",
+          "cachedResultName": "zk_pending_sql",
+          "cachedResultUrl": "/projects/XOPF8S5OUgPH3kAT/datatables/Udq1h8FqwPW9ZBmN"
+        },
+        "limit": 500
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "code-pending",
+      "name": "Shape Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        900
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════════════\n//  GET /webhook/zk/pending  ·  n8n Code node\n//  Sits between the Data table Get and the Respond node.\n//  Language: JavaScript · Mode: \"Run Once for All Items\"\n//\n//  Shapes queued rows into the JSON dataiku/drain_queue.py expects.\n// ═══════════════════════════════════════════════════════════════════════════\n\nconst rows = $input.all()\n  .map(item => item.json)\n  .filter(row => row && row.sql);\n\n// Insertion order is load-bearing. The parser emits an EMPLOYEES placeholder\n// merge before the BIOMETRIC_TEMPLATES row that references that PIN, so\n// replaying them out of order writes a template for a person who does not\n// exist yet. The Data table Get is configured to sort by id ascending, but\n// sort again here: a mis-set option in the UI is invisible until it corrupts\n// something, and this costs nothing.\nrows.sort((a, b) => Number(a.id) - Number(b.id));\n\nreturn [{\n  json: {\n    rows: rows.map(row => ({ id: row.id, sql: row.sql })),\n    count: rows.length,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "respond-pending",
+      "name": "Respond Pending",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        740,
+        900
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "wh-ack",
+      "name": "Queue Ack",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        1080
+      ],
+      "webhookId": "a1c0f6e2-0000-4000-8000-zkqueueack00",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "zk/ack",
+        "responseMode": "responseNode",
+        "options": {
+          "ipWhitelist": ""
+        }
+      },
+      "notes": "Dataiku calls this only after Snowflake accepted the rows.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iaGYiJpRuoQpE8cL",
+          "name": "X-ZK-Secret"
+        }
+      }
+    },
+    {
+      "id": "code-ack",
+      "name": "Expand Ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        1080
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════════════\n//  POST /webhook/zk/ack  ·  n8n Code node\n//  Sits between the guard and the Data table Delete.\n//  Language: JavaScript · Mode: \"Run Once for All Items\"\n//\n//  Fans {\"ids\":[1,2,3]} out to one item per id, because the Delete node runs\n//  once per input item and deletes what its condition matches.\n// ═══════════════════════════════════════════════════════════════════════════\n\nconst first = $input.first().json;\n// Depending on the webhook's body parsing the payload arrives either under\n// .body or at the top level. Accept both rather than depending on which.\nconst body = first.body || first;\n\nconst ids = Array.isArray(body.ids) ? body.ids : [];\n\n// n8n does not run a node that receives zero items, so an empty ack would\n// leave the Respond node unreached and the caller's HTTP request hanging\n// until it times out. One sentinel item keeps the branch alive; it carries a\n// null id, which matches no row, so nothing is deleted.\nif (!ids.length) {\n  return [{ json: { id: null, noop: true } }];\n}\n\nreturn ids.map(id => ({ json: { id } }));\n"
+      }
+    },
+    {
+      "id": "dt-ack",
+      "name": "Delete Acked",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        500,
+        1080
+      ],
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "Udq1h8FqwPW9ZBmN",
+          "mode": "list",
+          "cachedResultName": "zk_pending_sql",
+          "cachedResultUrl": "/projects/XOPF8S5OUgPH3kAT/datatables/Udq1h8FqwPW9ZBmN"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "respond-ack",
+      "name": "Respond Ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        740,
+        1080
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "ADMS cdata": {
+      "main": [
+        [
+          {
+            "node": "Parse ADMS Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse ADMS Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse ADMS Request": {
+      "main": [
+        [
+          {
+            "node": "Needs DB Write?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs DB Write?": {
+      "main": [
+        [
+          {
+            "node": "Queue for Dataiku",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Device",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue for Dataiku": {
+      "main": [
+        [
+          {
+            "node": "Respond to Device",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADMS getrequest": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADMS devicecmd": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Pending": {
+      "main": [
+        [
+          {
+            "node": "Read Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Queue": {
+      "main": [
+        [
+          {
+            "node": "Shape Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Pending": {
+      "main": [
+        [
+          {
+            "node": "Respond Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Ack": {
+      "main": [
+        [
+          {
+            "node": "Expand Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Ids": {
+      "main": [
+        [
+          {
+            "node": "Delete Acked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Acked": {
+      "main": [
+        [
+          {
+            "node": "Respond Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "executionTimeout": 30,
+    "timezone": "Africa/Lagos"
+  }
+}
