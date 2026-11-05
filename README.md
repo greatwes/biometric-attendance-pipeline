@@ -61,7 +61,12 @@ zk-attendance/
 │   ├── parse-adms-request.js       the parser (editable source of truth)
 │   ├── build-workflow.mjs          regenerates the workflow JSON from it
 │   ├── adms-listener.workflow.json import this into n8n
-│   └── test-parser.mjs             28 offline tests — run before deploying
+│   ├── test-parser.mjs             28 offline tests — run before deploying
+│   ├── roster-publish-upsert.js    multi-device roster sync — publish side
+│   ├── roster-response.js          multi-device roster sync — device read side
+│   ├── build-roster-workflow.mjs   regenerates roster.workflow.json
+│   ├── roster.workflow.json        import this into n8n
+│   └── README-queue.md             the n8n → Dataiku → Snowflake queue drain
 ├── routing/
 │   ├── README.md                   three ways to get the device to n8n
 │   └── iclock-rewrite.conf         the rewrite rule / standalone middlebox
@@ -246,6 +251,32 @@ what the parser expects. Then set `CAPTURE_RAW = false` at the top of
    on success and the Snowflake error on failure.
 
 ---
+
+## Multi-device roster sync
+
+Attendance push is one-way (device → Snowflake); roster sync is the other half —
+letting staff enrolled on one terminal clock in on any other, so a name,
+department, or fingerprint edit on one device reaches the rest without a
+person re-enrolling anywhere.
+
+```
+Dataiku (publish_roster.py) ──POST /webhook/zk/roster-publish──► n8n ──► Data table `zk_roster`
+                                                                               ▲
+                                              device ──GET /webhook/zk/roster──┘  "what changed since <version>?"
+```
+
+Deliberately asymmetric: **n8n never touches Snowflake for this.** Dataiku
+reads the roster and publishes it; n8n only stores and re-serves the latest
+version through a Data table, and devices poll it the same way the ADMS
+protocol already has them poll for commands. Each record is stored as one
+JSON blob rather than typed columns — the roster shape has already changed
+once (it gained split first/last names), and a Data table's columns are a
+manual, by-hand migration on a live instance; a device parsing a JSON blob is
+not. `version` is a Snowflake-assigned timestamp, not a device clock —
+deliberately, since two terminals' clocks can't be trusted to agree on which
+edit happened last. See [`SYNC-DESIGN.md`](SYNC-DESIGN.md) for the full design,
+including the open question on whether fingerprint templates are portable
+between terminals at all (untested, and the rollout plan gates on it).
 
 ## Notes on the design
 
