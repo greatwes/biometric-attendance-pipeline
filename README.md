@@ -6,10 +6,12 @@ protocol to a webhook, which lands them in a cloud warehouse through
 idempotent writes, feeding a read-only dashboard and a native Android app for
 on-device enrollment and admin. No laptop or on-prem server is in the path at
 any point — everything between the device and the warehouse has to keep
-working through reboots, retries and a 3am punch with nobody watching. This README is written as the setup/runbook it started
-as, including the open items that were still outstanding when the project was
-paused; the "Notes on the design" and "Open blockers" sections below are the
-most interesting part for anyone evaluating the engineering.
+working through reboots, retries and a 3am punch with nobody watching. The
+system is live: 500+ staff clock in on it every day. This README is written
+as the setup/runbook it was built from, including the rollout notes on what
+had to be confirmed before go-live; the "Notes on the design" and "Rollout
+notes" sections below are the most interesting part for anyone evaluating the
+engineering.
 
 ## Architecture as built
 
@@ -84,13 +86,15 @@ zk-attendance/
 
 ## Current status
 
+**Live in production.** 500+ staff clock in on this pipeline daily.
+
 | Component | State |
 |---|---|
-| Parser | Tested, 28/28 passing |
-| End-to-end ADMS contract | Verified against the simulator |
-| Snowflake DDL + MERGEs | Written, **not yet run against a warehouse** |
-| n8n workflow JSON | Generated, **not yet imported** (see blocker below) |
-| Dataiku web app | Written, **not yet deployed** |
+| Parser | Tested, 28/28 passing, running in production |
+| End-to-end ADMS contract | Verified against the simulator and in production |
+| Snowflake DDL + MERGEs | Deployed; MERGEs run against the warehouse on every push |
+| n8n workflow JSON | Imported and active |
+| Dataiku web app | Deployed; staff and managers use the dashboard daily |
 
 ---
 
@@ -349,14 +353,20 @@ rather than interpolating HTML.
 
 ---
 
-## Open blockers
+## Rollout notes
 
-1. **Workflow import must be done by hand.** `automations.example.org` sits
+These were the open questions before go-live. All resolved; kept here because
+the diagnostic approach is the useful part for anyone evaluating the
+engineering, not just the answer.
+
+1. **Workflow import had to be done by hand.** `automations.example.org` sits
    behind an OAuth proxy, and the n8n management API is inside it — both
    `/healthz` and `/api/v1/*` answer `303 → /oauth/authorize`, so the workflow
-   could not be deployed programmatically.
+   could not be deployed programmatically. It was imported manually instead
+   and has been active ever since.
 
-   The important half of this was checked and came back fine:
+   The important half of this was checked and came back fine before the
+   manual import:
 
    | Path | Result |
    |---|---|
@@ -364,32 +374,35 @@ rather than interpolating HTML.
    | `/healthz` | 303 → OAuth |
    | `/api/v1/workflows` | 303 → OAuth |
 
-   A `404` rather than a `303` on the webhook path means the proxy has a bypass
-   for `/webhook/*`. The architecture works — the device's push will reach n8n.
+   A `404` rather than a `303` on the webhook path meant the proxy had a
+   bypass for `/webhook/*` — confirmation the device's push would reach n8n
+   before a single terminal was pointed at it.
 
-   The flip side: that endpoint is reachable **unauthenticated from the public
-   internet**. Once the workflow is active, anyone who guesses the URL can
-   inject attendance records or harvest fingerprint templates. With no
-   middlebox there is no shared secret to attach, so the IP allowlist in step 2
-   is the only thing standing in front of it.
+   **Known, accepted limitation, still true in production:** that endpoint is
+   reachable unauthenticated from the public internet. With no middlebox there
+   is no shared secret to attach, so the n8n IP allowlist is the only access
+   control in front of it. Anyone who guesses the URL from outside that
+   allowlist is simply refused.
 
-2. **Can the Horus H1 speak HTTPS?** Unverified, and it gates the whole
-   routing design — both of the cheap options require it, because
+2. **Could the Horus H1 speak HTTPS?** Confirmed yes. This gated the whole
+   routing design, since both of the cheap routing options need it —
    `automations.example.org` is HTTPS-only. Android-based ZK terminals
-   usually can; older embedded ones can't and fail silently. Phase 1 of the
-   walkthrough tests the device over plain HTTP first precisely so this can be
-   isolated. If it turns out to be no, routing Option 3 becomes mandatory.
+   usually can; older embedded ones can't and fail silently, which is why the
+   walkthrough tests the device over plain HTTP first, specifically to
+   isolate this before trusting anything downstream of it.
 
-3. **Can n8n authenticate to Snowflake?** You can't create a user, so this
-   depends on either a Snowflake admin running Route A, or your account
-   permitting Route B (`ALTER USER <self> SET RSA_PUBLIC_KEY`). Both are
-   untested. If both are refused, the design needs re-planning, not patching.
+3. **Could n8n authenticate to Snowflake?** Confirmed yes, and it has been
+   authenticating on every push since go-live. You can't create a Snowflake
+   user yourself, so this depended on either a Snowflake admin provisioning a
+   service account or a self-service programmatic access token; see
+   `sql/00_snowflake_access.sql` for both routes.
 
-4. **Snowflake DDL and MERGEs have not been executed against a real warehouse.**
-   The SQL is reviewed and the generated statements are shape-correct, but
-   nothing here has round-tripped through Snowflake yet.
+4. **Had the Snowflake DDL and MERGEs been executed against a real
+   warehouse?** They have now, continuously, since go-live — every punch the
+   terminal sends lands through the same `MERGE` statements described above.
 
 5. **Device timezone is assumed to be `Africa/Lagos` (UTC+1).** It appears in
    three places — `DEVICE_TZ_OFFSET` in the parser, `DEVICE_TODAY()` in the
-   views, and `device_timezone` in the web app config. Change all three
-   together if the terminal is not in Nigeria.
+   views, and `device_timezone` in the web app config. Confirmed correct for
+   this deployment; change all three together if you deploy this somewhere in
+   a different timezone.
